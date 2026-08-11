@@ -1,0 +1,213 @@
+# Import required libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Machine Learning libraries
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+
+
+# ================= DATA LOADING =================
+class DatasetLoader:
+    def load(self, file):
+        # CSV file load karta hai
+        return pd.read_csv("C:/Users/Ahtsham-Riaz/Downloads/Training Dataset.csv")
+
+
+# ================= DATA INSPECTION =================
+class DataInspector:
+    def show(self, data):
+        # Data ka preview show karta hai
+        print("\n===== DATA PREVIEW =====")
+        print(data.head())
+
+        # Shape (rows, columns)
+        print("\nShape:", data.shape)
+
+        # Missing values check
+        print("\nMissing Values:\n", data.isnull().sum())
+
+
+# ================= DATA CLEANING =================
+class DataCleaner:
+    def clean(self, data):
+        # Loan_ID column remove karta hai (kyunki useful nahi hota)
+        data = data.drop("Loan_ID", axis=1)
+
+        # Missing values fill karna
+        for col in data.columns:
+            if data[col].dtype in ['int64', 'float64']:
+                # Numeric columns → median
+                data[col] = data[col].fillna(data[col].median())
+            else:
+                # Categorical columns → mode
+                data[col] = data[col].fillna(data[col].mode()[0])
+        return data
+
+
+# ================= DATA VISUALIZATION =================
+class DataVisualizer:
+    def plot(self, data):
+
+        # Loan Status distribution
+        sns.countplot(x="Loan_Status", data=data)
+        plt.title("Loan Status Distribution")
+        plt.show()
+
+        # Loan Amount histogram
+        plt.figure()
+        sns.histplot(data["LoanAmount"], bins=20)
+        plt.title("Loan Amount Distribution")
+        plt.show()
+
+        # Income vs Loan
+        plt.figure()
+        sns.scatterplot(x="ApplicantIncome", y="LoanAmount", data=data)
+        plt.title("Income vs Loan Amount")
+        plt.show()
+
+        # Education vs Loan Status
+        plt.figure()
+        sns.countplot(x="Education", hue="Loan_Status", data=data)
+        plt.title("Loan Status by Education")
+        plt.show()
+
+
+# ================= ENCODING =================
+class Encoder:
+    def encode(self, data):
+        # Categorical data → numeric (One Hot Encoding)
+        data = pd.get_dummies(data, drop_first=True)
+
+        # Sab columns ko integer bana deta hai
+        for col in data.columns:
+            data[col] = data[col].astype(int)
+        return data
+
+
+# ================= TRAIN TEST SPLIT =================
+class DataSplitter:
+    def split(self, data):
+        # Target column find karta hai
+        target_col = [c for c in data.columns if 'Loan_Status' in c][0]
+
+        # Features (X) aur Target (y)
+        X = data.drop(target_col, axis=1)
+        y = data[target_col]
+
+        print("Target column:", target_col)
+        print("Unique y values:", y.unique())
+
+        # 80% training, 20% testing
+        return train_test_split(X, y, test_size=0.2, random_state=42)
+
+
+# ================= MODEL TRAINING =================
+class ModelTrainer:
+    def train(self, X_train, y_train):
+
+        # Different ML models
+        models = {
+            "Logistic Regression": LogisticRegression(max_iter=1000),
+            "Decision Tree": DecisionTreeClassifier(),
+            "Random Forest": RandomForestClassifier()
+        }
+
+        trained_models = {}
+
+        # Train each model
+        for name, model in models.items():
+            model.fit(X_train, y_train)
+            trained_models[name] = model
+
+        return trained_models
+
+
+# ================= MODEL EVALUATION =================
+class ModelEvaluator:
+    def evaluate(self, models, X_test, y_test):
+
+        best_model = None
+        best_score = 0
+
+        for name, model in models.items():
+            pred = model.predict(X_test)
+
+            acc = accuracy_score(y_test, pred)
+
+            print(f"\n===== {name} =====")
+            print("Accuracy:", acc)
+
+            print("\nConfusion Matrix:")
+            print(confusion_matrix(y_test, pred))
+
+            print("\nClassification Report:")
+            print(classification_report(y_test, pred))
+
+            # Best model select karna
+            if acc > best_score:
+                best_score = acc
+                best_model = model
+
+        print("\nBest Model Selected")
+        return best_model
+
+
+# ================= PREDICTION =================
+class Predictor:
+    def predict(self, model, sample):
+        # New data pe prediction
+        return model.predict([sample])
+
+
+# ================= MAIN SYSTEM =================
+class LoanSystem:
+    def run(self):
+
+        # Step 1: Load data
+        loader = DatasetLoader()
+        data = loader.load("train.csv")
+
+        # Step 2: Inspect data
+        inspector = DataInspector()
+        inspector.show(data)
+
+        # Step 3: Clean data
+        cleaner = DataCleaner()
+        data = cleaner.clean(data)
+
+        # Step 4: Visualization
+        viz = DataVisualizer()
+        viz.plot(data)
+
+        # Step 5: Encoding
+        encoder = Encoder()
+        data = encoder.encode(data)
+
+        # Step 6: Split
+        splitter = DataSplitter()
+        X_train, X_test, y_train, y_test = splitter.split(data)
+
+        # Step 7: Train models
+        trainer = ModelTrainer()
+        models = trainer.train(X_train, y_train)
+
+        # Step 8: Evaluate
+        evaluator = ModelEvaluator()
+        best_model = evaluator.evaluate(models, X_test, y_test)
+
+        # Step 9: Prediction
+        predictor = Predictor()
+        sample = X_test.iloc[0].values
+        result = predictor.predict(best_model, sample)
+
+        print("\nFinal Prediction:", "Approved" if result[0] == 1 else "Rejected")
+
+
+# Run system
+app = LoanSystem()
+app.run()
